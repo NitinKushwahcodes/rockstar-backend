@@ -1,0 +1,159 @@
+<!-- Manual verification harness for multi-client testing — not a product interface -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Roxstar Realtime Test Harness</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+    .card { border: 1px solid #444; padding: 15px; margin-bottom: 15px; border-radius: 4px; background: #252526; }
+    input, button { padding: 8px; margin: 4px 0; background: #3c3c3c; color: #fff; border: 1px solid #555; }
+    button { cursor: pointer; background: #0e639c; }
+    button:disabled { background: #555; cursor: not-allowed; }
+    #log { height: 250px; overflow-y: scroll; background: #111; padding: 10px; border: 1px solid #333; }
+    .log-entry { margin-bottom: 4px; border-bottom: 1px solid #222; }
+    .event-type { color: #4ec9b0; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Roxstar Socket.IO Manual Test Harness</h2>
+  
+  <div class="card">
+    <h3>Connection Config</h3>
+    <label>Server Base URL: <input type="text" id="baseUrl" value="http://localhost:8080" style="width:250px"></label><br>
+    <label>JWT Token: <input type="text" id="token" placeholder="Bearer JWT" style="width:400px"></label><br>
+    <label>Room ID: <input type="text" id="roomId" placeholder="24-char ObjectId" style="width:300px"></label><br>
+    <button id="btnConnect" onclick="connectSocket()">Connect Socket</button>
+    <button id="btnDisconnect" onclick="disconnectSocket()" disabled>Disconnect Socket</button>
+    <span id="status" style="margin-left: 10px; color: #f44;">Disconnected</span>
+  </div>
+
+  <div class="card">
+    <h3>Room Actions (REST API)</h3>
+    <button onclick="apiCall('/join')">Join Room</button>
+    <button onclick="apiCall('/leave')">Leave Room</button>
+    <button onclick="startSpin()">Start Spin (Owner Only)</button>
+  </div>
+
+  <div class="card">
+    <h3>Room State</h3>
+    <div><strong>Active Spin ID:</strong> <span id="activeSpinId">none</span></div>
+    <div><strong>Participants (<span id="participantCount">0</span>):</strong></div>
+    <ul id="participants"></ul>
+  </div>
+
+  <div class="card">
+    <h3>Event Log</h3>
+    <div id="log"></div>
+  </div>
+
+  <script>
+    let socket = null;
+
+    function log(type, payload) {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      const time = new Date().toISOString().split('T')[1].slice(0, 8);
+      entry.innerHTML = `<span style="color:#888">[${time}]</span> <span class="event-type">${type}</span>: ${JSON.stringify(payload)}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function connectSocket() {
+      const baseUrl = document.getElementById('baseUrl').value;
+      const token = document.getElementById('token').value.trim();
+      const roomId = document.getElementById('roomId').value.trim();
+
+      if (!token || !roomId) {
+        alert('Please enter both JWT Token and Room ID');
+        return;
+      }
+
+      socket = io(baseUrl, {
+        auth: { token, roomId }
+      });
+
+      socket.on('connect', () => {
+        document.getElementById('status').innerText = 'Connected (' + socket.id + ')';
+        document.getElementById('status').style.color = '#4ec9b0';
+        document.getElementById('btnConnect').disabled = true;
+        document.getElementById('btnDisconnect').disabled = false;
+        log('SYSTEM', 'Connected with socket ID: ' + socket.id);
+      });
+
+      socket.on('connect_error', (err) => {
+        log('CONNECT_ERROR', err.message);
+        document.getElementById('status').innerText = 'Connect Error: ' + err.message;
+        document.getElementById('status').style.color = '#f44';
+      });
+
+      socket.on('disconnect', (reason) => {
+        document.getElementById('status').innerText = 'Disconnected (' + reason + ')';
+        document.getElementById('status').style.color = '#f44';
+        document.getElementById('btnConnect').disabled = false;
+        document.getElementById('btnDisconnect').disabled = true;
+        log('SYSTEM', 'Disconnected: ' + reason);
+      });
+
+      const events = ['room_state', 'user_joined', 'user_left', 'draft_shared', 'spin_started', 'user_eliminated', 'winner_announced'];
+      for (const evt of events) {
+        socket.on(evt, (payload) => {
+          log(evt, payload);
+          if (evt === 'room_state' && payload.room) {
+            updateRoomUI(payload.room);
+          }
+        });
+      }
+    }
+
+    function disconnectSocket() {
+      if (socket) {
+        socket.disconnect();
+      }
+    }
+
+    function updateRoomUI(room) {
+      document.getElementById('participantCount').innerText = room.participantCount || 0;
+      document.getElementById('activeSpinId').innerText = room.activeSpinId || 'none';
+      const ul = document.getElementById('participants');
+      ul.innerHTML = '';
+      if (room.participants) {
+        room.participants.forEach(p => {
+          const li = document.createElement('li');
+          li.innerText = `${p.displayName} (${p.userId}) - Status: ${p.status}`;
+          ul.appendChild(li);
+        });
+      }
+    }
+
+    async function apiCall(action) {
+      const baseUrl = document.getElementById('baseUrl').value;
+      const token = document.getElementById('token').value.trim();
+      const roomId = document.getElementById('roomId').value.trim();
+
+      const res = await fetch(`${baseUrl}/api/v1/rooms/${roomId}${action}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      log('REST_RESPONSE ' + action, data);
+      if (data.room) updateRoomUI(data.room);
+    }
+
+    async function startSpin() {
+      const baseUrl = document.getElementById('baseUrl').value;
+      const token = document.getElementById('token').value.trim();
+      const roomId = document.getElementById('roomId').value.trim();
+
+      const res = await fetch(`${baseUrl}/api/v1/rooms/${roomId}/spins`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      log('REST_RESPONSE /spins', data);
+    }
+  </script>
+</body>
+</html>
