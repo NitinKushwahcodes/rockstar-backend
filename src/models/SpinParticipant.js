@@ -9,14 +9,17 @@ const spinParticipantSchema = new mongoose.Schema(
       enum: ['ACTIVE', 'ELIMINATED', 'WINNER', 'LEFT'],
       default: 'ACTIVE',
     },
-    eliminationOrder: { type: Number, default: null },
+    eliminationOrder: { type: Number },
     eliminatedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
 
 spinParticipantSchema.index({ spinId: 1, userId: 1 }, { unique: true });
-spinParticipantSchema.index({ spinId: 1, eliminationOrder: 1 }, { unique: true, sparse: true });
+spinParticipantSchema.index(
+  { spinId: 1, eliminationOrder: 1 },
+  { unique: true, partialFilterExpression: { eliminationOrder: { $type: 'number' } } }
+);
 spinParticipantSchema.index({ spinId: 1, status: 1 });
 
 export const SpinParticipant = mongoose.model('SpinParticipant', spinParticipantSchema);

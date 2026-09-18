@@ -3,6 +3,7 @@ import dns from 'node:dns';
 import { env } from './env.js';
 import { logger } from '../lib/logger.js';
 import { Spin } from '../models/Spin.js';
+import { SpinParticipant } from '../models/SpinParticipant.js';
 
 // Set public DNS servers for c-ares SRV resolution on Windows
 try {
@@ -22,6 +23,14 @@ export async function connectDB() {
       { unique: true, partialFilterExpression: { status: { $in: ['WAITING', 'RUNNING'] } } }
     );
     logger.info('Partial unique index on Spin collection verified');
+
+    try {
+      await SpinParticipant.collection.dropIndex('spinId_1_eliminationOrder_1');
+    } catch {
+      // Index might not exist or already dropped
+    }
+    await SpinParticipant.syncIndexes();
+    logger.info('Indexes for SpinParticipant synchronized');
   } catch (error) {
     logger.error({ err: error }, 'MongoDB connection failed');
     process.exit(1);

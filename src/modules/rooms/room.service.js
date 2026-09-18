@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { Room } from '../../models/Room.js';
 import { RoomMember } from '../../models/RoomMember.js';
 import { User } from '../../models/User.js';
+import { Spin } from '../../models/Spin.js';
 import { AppError, ErrorCodes } from '../../lib/errors.js';
 import { eventBus } from '../../lib/eventBus.js';
 
@@ -48,6 +49,8 @@ export async function getRoomState(roomId) {
     .populate('userId', 'displayName')
     .sort({ joinedAt: 1 });
 
+  const activeSpin = await Spin.findOne({ roomId, status: { $in: ['WAITING', 'RUNNING'] } });
+
   return {
     id: room._id.toString(),
     name: room.name,
@@ -60,7 +63,7 @@ export async function getRoomState(roomId) {
       status: m.status,
       joinedAt: m.joinedAt,
     })),
-    activeSpinId: null,
+    activeSpinId: activeSpin ? activeSpin._id.toString() : null,
   };
 }
 

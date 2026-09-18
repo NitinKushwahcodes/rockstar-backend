@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import userRouter from './modules/users/user.routes.js';
 import roomRouter from './modules/rooms/room.routes.js';
 import draftRouter from './modules/drafts/draft.routes.js';
+import spinRouter from './modules/spins/spin.routes.js';
 
 const router = Router();
 
@@ -25,5 +26,6 @@ router.get('/readyz', async (req, res) => {
 router.use('/api/v1/users', userRouter);
 router.use('/api/v1/rooms', roomRouter);
 router.use('/api/v1/drafts', draftRouter);
+router.use('/api/v1', spinRouter);
 
 export default router;
