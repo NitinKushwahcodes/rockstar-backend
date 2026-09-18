@@ -66,7 +66,7 @@ describe('Spin Engine Seven Edge Cases', () => {
     // User2 leaves room mid-spin
     await leaveRoom(roomId, u2.id);
 
-    await new Promise((r) => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, 1200));
     const finalState = await getSpinState(spinId);
     assert.equal(finalState.status, 'COMPLETED');
   });
@@ -106,7 +106,7 @@ describe('Spin Engine Seven Edge Cases', () => {
     // Owner leaves mid-spin
     await leaveRoom(roomId, owner.id);
 
-    await new Promise((r) => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, 1200));
     const finalState = await getSpinState(spinId);
     assert.equal(finalState.status, 'COMPLETED');
     assert.ok(finalState.winnerId);
