@@ -12,3 +12,7 @@ export const createRoomSchema = z.object({
 export const roomIdParamSchema = z.object({
   roomId: objectIdSchema,
 });
+
+export const shareDraftBodySchema = z.object({
+  draftId: objectIdSchema,
+});
