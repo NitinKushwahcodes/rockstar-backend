@@ -14,7 +14,10 @@ const spinSchema = new mongoose.Schema(
     completedAt: { type: Date, default: null },
     winnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     nextEliminationAt: { type: Date, default: null },
-    eliminationIntervalMs: { type: Number, default: () => env.SPIN_INTERVAL_MS },
+    eliminationIntervalMs: {
+      type: Number,
+      default: () => Number(process.env.SPIN_INTERVAL_MS || env.SPIN_INTERVAL_MS || 5000),
+    },
   },
   { timestamps: true }
 );

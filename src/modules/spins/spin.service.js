@@ -10,11 +10,41 @@ import { AppError, ErrorCodes } from '../../lib/errors.js';
 import { eventBus } from '../../lib/eventBus.js';
 import { spinScheduler } from './spin.scheduler.js';
 
-export async function startSpin(roomId, requesterId) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+function getSpinIntervalMs() {
+  return process.env.SPIN_INTERVAL_MS ? Number(process.env.SPIN_INTERVAL_MS) : env.SPIN_INTERVAL_MS;
+}
 
-  try {
+async function runWithTransactionRetry(fn, maxRetries = 5) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const result = await fn(session);
+      await session.commitTransaction();
+      session.endSession();
+      return result;
+    } catch (err) {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      session.endSession();
+
+      const isTransient =
+        err.code === 112 ||
+        err.hasErrorLabel?.('TransientTransactionError') ||
+        err.errmsg?.includes('Write conflict');
+
+      if (isTransient && attempt < maxRetries - 1) {
+        await new Promise((r) => setTimeout(r, 50 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+export async function startSpin(roomId, requesterId) {
+  const createdSpin = await runWithTransactionRetry(async (session) => {
     const room = await Room.findById(roomId).session(session);
     if (!room || room.status !== 'OPEN') {
       throw new AppError(ErrorCodes.ROOM_NOT_FOUND, 'Room not found or is closed', 404);
@@ -24,20 +54,21 @@ export async function startSpin(roomId, requesterId) {
       throw new AppError(ErrorCodes.NOT_ROOM_OWNER, 'Only the room owner can start a spin', 403);
     }
 
-    // Snapshot eligible members inside transaction to ensure deterministic start
     const eligibleMembers = await RoomMember.find({ roomId, status: 'ACTIVE' })
       .populate('userId', 'displayName')
       .session(session);
 
-    if (eligibleMembers.length < 3) {
+    const validMembers = eligibleMembers.filter((m) => m.userId != null);
+
+    if (validMembers.length < 3) {
       throw new AppError(
         ErrorCodes.INSUFFICIENT_PLAYERS,
-        `Cannot start spin: room has ${eligibleMembers.length} active players, minimum required is 3`,
+        `Cannot start spin: room has ${validMembers.length} active players, minimum required is 3`,
         422
       );
     }
 
-    if (eligibleMembers.length > 20) {
+    if (validMembers.length > 20) {
       throw new AppError(
         ErrorCodes.TOO_MANY_PLAYERS,
         'Cannot start spin: room exceeds maximum 20 players',
@@ -46,7 +77,8 @@ export async function startSpin(roomId, requesterId) {
     }
 
     const now = new Date();
-    const nextEliminationAt = new Date(now.getTime() + env.SPIN_INTERVAL_MS);
+    const intervalMs = getSpinIntervalMs();
+    const nextEliminationAt = new Date(now.getTime() + intervalMs);
 
     const spin = new Spin({
       roomId,
@@ -54,11 +86,11 @@ export async function startSpin(roomId, requesterId) {
       status: 'RUNNING',
       startedAt: now,
       nextEliminationAt,
-      eliminationIntervalMs: env.SPIN_INTERVAL_MS,
+      eliminationIntervalMs: intervalMs,
     });
     await spin.save({ session });
 
-    const participantDocs = eligibleMembers.map((m) => ({
+    const participantDocs = validMembers.map((m) => ({
       spinId: spin._id,
       userId: m.userId._id,
       status: 'ACTIVE',
@@ -74,7 +106,7 @@ export async function startSpin(roomId, requesterId) {
           payload: {
             spinId: spin._id.toString(),
             roomId: roomId.toString(),
-            participantIds: eligibleMembers.map((m) => m.userId._id.toString()),
+            participantIds: validMembers.map((m) => m.userId._id.toString()),
           },
           sequence: 0,
         },
@@ -82,54 +114,45 @@ export async function startSpin(roomId, requesterId) {
       { session }
     );
 
-    await session.commitTransaction();
-    session.endSession();
-
-    const spinState = await getSpinState(spin._id.toString());
-
-    eventBus.emit('spin_started', {
-      spinId: spin._id.toString(),
-      roomId: roomId.toString(),
-      startedAt: spin.startedAt,
-      nextEliminationAt: spin.nextEliminationAt,
-      participants: spinState.participants,
-    });
-
-    spinScheduler.schedule(spin._id.toString(), new Date(spin.nextEliminationAt).getTime());
-
-    return spinState;
-  } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
-
-    if (err.code === 11000 && (err.keyPattern?.roomId || err.errmsg?.includes('roomId'))) {
+    return spin;
+  }).catch((err) => {
+    if (err.code === 11000 || err.errorResponse?.code === 11000) {
       throw new AppError(
         ErrorCodes.SPIN_ALREADY_ACTIVE,
         'An active spin is already running in this room',
         409
       );
     }
-    console.error('Unexpected startSpin error:', err);
     throw err;
-  }
+  });
+
+  const spinState = await getSpinState(createdSpin._id.toString());
+
+  eventBus.emit('spin_started', {
+    spinId: createdSpin._id.toString(),
+    roomId: roomId.toString(),
+    startedAt: createdSpin.startedAt,
+    nextEliminationAt: createdSpin.nextEliminationAt,
+    participants: spinState.participants,
+  });
+
+  spinScheduler.schedule(createdSpin._id.toString(), new Date(createdSpin.nextEliminationAt).getTime());
+
+  return spinState;
 }
 
 export async function executeEliminationTick(spinId) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
+  const result = await runWithTransactionRetry(async (session) => {
     const spin = await Spin.findById(spinId).session(session);
     if (!spin || spin.status !== 'RUNNING') {
-      await session.abortTransaction();
-      session.endSession();
-      spinScheduler.cancel(spinId);
-      return;
+      return { isCompleted: true };
     }
 
-    const activeParticipants = await SpinParticipant.find({ spinId, status: 'ACTIVE' })
+    const rawParticipants = await SpinParticipant.find({ spinId, status: 'ACTIVE' })
       .populate('userId', 'displayName')
       .session(session);
+
+    const activeParticipants = rawParticipants.filter((p) => p.userId != null);
 
     if (activeParticipants.length === 1) {
       const winner = activeParticipants[0];
@@ -158,28 +181,24 @@ export async function executeEliminationTick(spinId) {
         { session }
       );
 
-      await session.commitTransaction();
-      session.endSession();
-
-      spinScheduler.cancel(spinId);
-
-      eventBus.emit('winner_announced', {
-        spinId: spin._id.toString(),
-        roomId: spin.roomId.toString(),
-        winnerId: winner.userId._id.toString(),
-        winnerDisplayName: winner.userId.displayName,
-      });
-
-      return;
+      return {
+        isCompleted: true,
+        eventPayloadToEmit: {
+          type: 'winner_announced',
+          data: {
+            spinId: spin._id.toString(),
+            roomId: spin.roomId.toString(),
+            winnerId: winner.userId._id.toString(),
+            winnerDisplayName: winner.userId.displayName,
+          },
+        },
+      };
     }
 
     if (activeParticipants.length === 0) {
       spin.status = 'ABORTED';
       await spin.save({ session });
-      await session.commitTransaction();
-      session.endSession();
-      spinScheduler.cancel(spinId);
-      return;
+      return { isCompleted: true };
     }
 
     // crypto.randomInt is used instead of Math.random() to provide cryptographically uniform random selection without modulo bias.
@@ -198,7 +217,8 @@ export async function executeEliminationTick(spinId) {
     await chosen.save({ session });
 
     const now = new Date();
-    spin.nextEliminationAt = new Date(now.getTime() + spin.eliminationIntervalMs);
+    const intervalMs = spin.eliminationIntervalMs || getSpinIntervalMs();
+    spin.nextEliminationAt = new Date(now.getTime() + intervalMs);
     await spin.save({ session });
 
     const eventCount = await SpinEvent.countDocuments({ spinId }).session(session);
@@ -220,37 +240,44 @@ export async function executeEliminationTick(spinId) {
       { session }
     );
 
-    await session.commitTransaction();
-    session.endSession();
-
-    const remainingActive = await SpinParticipant.find({ spinId, status: 'ACTIVE' }).populate(
-      'userId',
-      'displayName'
+    const remainingActive = activeParticipants.filter(
+      (p) => p.userId._id.toString() !== chosen.userId._id.toString()
     );
 
-    eventBus.emit('user_eliminated', {
-      spinId: spin._id.toString(),
-      roomId: spin.roomId.toString(),
-      eliminatedUserId: chosen.userId._id.toString(),
-      eliminatedDisplayName: chosen.userId.displayName,
-      eliminationOrder,
-      remainingCount: remainingActive.length,
-      remainingParticipants: remainingActive.map((p) => ({
-        userId: p.userId._id.toString(),
-        displayName: p.userId.displayName,
-      })),
-    });
+    return {
+      isCompleted: false,
+      nextTargetTime: spin.nextEliminationAt.getTime(),
+      shouldRunNextImmediately: remainingActive.length === 1,
+      eventPayloadToEmit: {
+        type: 'user_eliminated',
+        data: {
+          spinId: spin._id.toString(),
+          roomId: spin.roomId.toString(),
+          eliminatedUserId: chosen.userId._id.toString(),
+          eliminatedDisplayName: chosen.userId.displayName,
+          eliminationOrder,
+          remainingCount: remainingActive.length,
+          remainingParticipants: remainingActive.map((p) => ({
+            userId: p.userId._id.toString(),
+            displayName: p.userId.displayName,
+          })),
+        },
+      },
+    };
+  });
 
-    if (remainingActive.length === 1) {
-      // Immediate tick to finalize winner without waiting full interval
-      executeEliminationTick(spinId).catch(() => {});
-    } else {
-      spinScheduler.schedule(spinId, new Date(spin.nextEliminationAt).getTime());
-    }
-  } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
-    throw err;
+  if (result.isCompleted) {
+    spinScheduler.cancel(spinId);
+  }
+
+  if (result.eventPayloadToEmit) {
+    eventBus.emit(result.eventPayloadToEmit.type, result.eventPayloadToEmit.data);
+  }
+
+  if (result.shouldRunNextImmediately) {
+    await executeEliminationTick(spinId);
+  } else if (!result.isCompleted && result.nextTargetTime) {
+    spinScheduler.schedule(spinId, result.nextTargetTime);
   }
 }
 
@@ -278,10 +305,12 @@ eventBus.on('user_left', async ({ roomId, userId }) => {
     participant.eliminatedAt = new Date();
     await participant.save();
 
-    const remainingActive = await SpinParticipant.find({
-      spinId: runningSpin._id,
-      status: 'ACTIVE',
-    }).populate('userId', 'displayName');
+    const remainingActive = (
+      await SpinParticipant.find({
+        spinId: runningSpin._id,
+        status: 'ACTIVE',
+      }).populate('userId', 'displayName')
+    ).filter((p) => p.userId != null);
 
     eventBus.emit('user_eliminated', {
       spinId: runningSpin._id.toString(),
@@ -310,12 +339,14 @@ export async function getSpinState(spinId) {
     throw new AppError(ErrorCodes.SPIN_NOT_FOUND, 'Spin not found', 404);
   }
 
-  const participants = await SpinParticipant.find({ spinId })
+  const rawParticipants = await SpinParticipant.find({ spinId })
     .populate('userId', 'displayName')
     .sort({ createdAt: 1 });
 
+  const participants = rawParticipants.filter((p) => p.userId != null);
+
   const eliminations = participants
-    .filter((p) => p.status === 'ELIMINATED' || p.status === 'WINNER')
+    .filter((p) => p.status === 'ELIMINATED')
     .sort((a, b) => (a.eliminationOrder || 999) - (b.eliminationOrder || 999));
 
   return {

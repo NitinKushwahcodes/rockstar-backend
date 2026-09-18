@@ -33,7 +33,9 @@ export async function createRoom(ownerId, data) {
 
     return getRoomState(room._id);
   } catch (err) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     session.endSession();
     throw err;
   }
@@ -49,6 +51,7 @@ export async function getRoomState(roomId) {
     .populate('userId', 'displayName')
     .sort({ joinedAt: 1 });
 
+  const validMembers = activeMembers.filter((m) => m.userId != null);
   const activeSpin = await Spin.findOne({ roomId, status: { $in: ['WAITING', 'RUNNING'] } });
 
   return {
@@ -56,8 +59,8 @@ export async function getRoomState(roomId) {
     name: room.name,
     ownerId: room.ownerId.toString(),
     status: room.status,
-    participantCount: activeMembers.length,
-    participants: activeMembers.map((m) => ({
+    participantCount: validMembers.length,
+    participants: validMembers.map((m) => ({
       userId: m.userId._id ? m.userId._id.toString() : m.userId.toString(),
       displayName: m.userId.displayName || '',
       status: m.status,
