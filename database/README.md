@@ -1,0 +1,3 @@
+# Database Architecture & Technology Choices
+
+MongoDB on MongoDB Atlas was selected for this application because Atlas provides multi-document transactions across replica sets, ensuring atomic multi-collection updates during room creation and spin elimination ticks. Furthermore, MongoDB's partial unique index feature allows enforcing the critical business constraint of having at most one active (`WAITING` or `RUNNING`) spin per room directly at the database level, preventing race conditions under concurrent requests. In production (Phase 4), network access on Atlas is restricted strictly to the fixed Elastic IP of the deployed AWS EC2 instance.
