@@ -45,16 +45,16 @@ stateDiagram-v2
         CheckActiveStatus --> PickEliminated: User ACTIVE
         CheckActiveStatus --> SelectCandidate: User LEFT / Already Eliminated
         PickEliminated --> SaveTickDB: Write SpinParticipant & Update Spin
-        SaveTickDB --> BroadcastTick: Emit spin_tick over Socket.IO
+        SaveTickDB --> BroadcastTick: Emit user_eliminated over Socket.IO
         BroadcastTick --> CheckWinner
         CheckWinner --> NextTick: > 1 Active Participant Remains
         NextTick --> SelectCandidate: Dynamic Timeout (Drift Corrected)
     }
 
     CheckWinner --> COMPLETED: 1 Active Participant Remains (Winner Declared)
-    RUNNING --> CANCELLED: All remaining participants left mid-spin
+    RUNNING --> ABORTED: All remaining participants left mid-spin
     COMPLETED --> [*]
-    CANCELLED --> [*]
+    ABORTED --> [*]
 ```
 
 ---
@@ -93,5 +93,5 @@ If the node process restarts mid-spin (crash or deployment rollout):
 - **User:** `_id`, `displayName`, `createdAt`, `updatedAt`
 - **Room:** `_id`, `code` (6-char unique uppercase), `ownerId` -> User, `status` (`ACTIVE`, `ARCHIVED`), `members` -> `[RoomMemberSchema]` (`userId`, `role`, `status` (`ACTIVE`, `LEFT`), `joinedAt`, `leftAt`)
 - **Draft:** `_id`, `roomId` -> Room, `ownerId` -> User, `title`, `items` (`[DraftItemSchema]`), `sharedAt`, `createdAt`
-- **Spin:** `_id`, `roomId` -> Room, `status` (`WAITING`, `RUNNING`, `COMPLETED`, `CANCELLED`), `winnerUserId` -> User, `totalParticipants`, `eliminatedCount`, `currentStep`, `startedAt`, `completedAt`
+- **Spin:** `_id`, `roomId` -> Room, `status` (`WAITING`, `RUNNING`, `COMPLETED`, `ABORTED`), `winnerUserId` -> User, `totalParticipants`, `eliminatedCount`, `currentStep`, `startedAt`, `completedAt`
 - **SpinParticipant:** `_id`, `spinId` -> Spin, `userId` -> User, `status` (`ACTIVE`, `ELIMINATED`), `eliminationOrder` (1-indexed number or null), `eliminatedAt`

@@ -3,6 +3,7 @@ import { RoomDraftShare } from '../../models/RoomDraftShare.js';
 import { RoomMember } from '../../models/RoomMember.js';
 import { AppError, ErrorCodes } from '../../lib/errors.js';
 import { eventBus } from '../../lib/eventBus.js';
+import { SocketEvents } from '../../realtime/events.js';
 
 export async function createDraft(ownerId, data) {
   const draft = await Draft.create({
@@ -41,34 +42,13 @@ export async function shareDraftToRoom(roomId, draftId, userId) {
       draftId,
       sharedById: userId,
     });
-
-    eventBus.emit('draft_shared', {
-      roomId: roomId.toString(),
-      draft: {
-        id: draft._id.toString(),
-        name: draft.name,
-        durationMs: draft.durationMs,
-        effect: draft.effect,
-        fileUrl: draft.fileUrl,
-        sharedById: userId.toString(),
-      },
-    });
   } catch (err) {
-    // Idempotent re-share handling for unique index violation
-    if (err.code === 11000) {
-      return {
-        id: draft._id.toString(),
-        name: draft.name,
-        durationMs: draft.durationMs,
-        effect: draft.effect,
-        fileUrl: draft.fileUrl,
-        sharedById: userId.toString(),
-      };
+    if (err.code !== 11000) {
+      throw err;
     }
-    throw err;
   }
 
-  return {
+  const sharePayload = {
     id: draft._id.toString(),
     name: draft.name,
     durationMs: draft.durationMs,
@@ -76,4 +56,11 @@ export async function shareDraftToRoom(roomId, draftId, userId) {
     fileUrl: draft.fileUrl,
     sharedById: userId.toString(),
   };
+
+  eventBus.emit(SocketEvents.DRAFT_SHARED, {
+    roomId: roomId.toString(),
+    draft: sharePayload,
+  });
+
+  return sharePayload;
 }

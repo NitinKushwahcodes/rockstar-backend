@@ -86,32 +86,46 @@ io("http://localhost:8080", {
    Emitted on connection or member state change.
    ```json
    {
-     "roomId": "65f1a2b3c4d5e6f7a8b9c0d2",
-     "activeMembers": [
-       { "userId": "...", "displayName": "Alex", "role": "OWNER" }
-     ],
-     "activeSpin": null
+     "room": { ... },
+     "spin": { ... }
    }
    ```
 
-2. **`member_joined`**
+2. **`user_joined`**
    ```json
    {
+     "roomId": "65f1a2b3c4d5e6f7a8b9c0d2",
      "userId": "65f1a2b3c4d5e6f7a8b9c0d3",
      "displayName": "Bob",
      "joinedAt": "2026-09-18T19:05:00.000Z"
    }
    ```
 
-3. **`member_left`**
+3. **`user_left`**
    ```json
    {
+     "roomId": "65f1a2b3c4d5e6f7a8b9c0d2",
      "userId": "65f1a2b3c4d5e6f7a8b9c0d3",
      "leftAt": "2026-09-18T19:10:00.000Z"
    }
    ```
 
-4. **`spin_started`**
+4. **`draft_shared`**
+   ```json
+   {
+     "roomId": "65f1a2b3c4d5e6f7a8b9c0d2",
+     "draft": {
+       "id": "65f1a2b3c4d5e6f7a8b9c0d5",
+       "name": "Cool Guitar Loop",
+       "durationMs": 15000,
+       "effect": "REVERB",
+       "fileUrl": "https://example.com/loop.wav",
+       "sharedById": "65f1a2b3c4d5e6f7a8b9c0d1"
+     }
+   }
+   ```
+
+5. **`spin_started`**
    ```json
    {
      "spinId": "65f1a2b3c4d5e6f7a8b9c0d4",
@@ -121,7 +135,7 @@ io("http://localhost:8080", {
    }
    ```
 
-5. **`spin_tick`**
+6. **`user_eliminated`**
    ```json
    {
      "spinId": "65f1a2b3c4d5e6f7a8b9c0d4",
@@ -135,7 +149,7 @@ io("http://localhost:8080", {
    }
    ```
 
-6. **`spin_completed`**
+7. **`winner_announced`**
    ```json
    {
      "spinId": "65f1a2b3c4d5e6f7a8b9c0d4",

@@ -4,7 +4,7 @@
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-22%2F22%20PASS-success)](tests/)
 
-Production-grade real-time backend service for music draft room management, live Socket.IO state synchronization, and a deterministic, database-enforced random participant spin elimination engine.
+Real-time Node.js backend service for music draft room management, live Socket.IO state synchronization, and a deterministic, database-enforced random participant spin elimination engine.
 
 ---
 
@@ -22,7 +22,7 @@ Production-grade real-time backend service for music draft room management, live
    Uses a MongoDB **Partial Unique Index** (`{ roomId: 1 }, { status: { $in: ['WAITING', 'RUNNING'] } }`) on the `Spin` collection to guarantee at the database storage engine layer that a room can have at most 1 active spin at any given time, preventing race conditions or duplicate spin execution across distributed instances.
 
 2. **MongoDB Atlas Multi-Document Transaction Retries:**
-   Implements a robust `runWithTransactionRetry` wrapper that catches transient write conflicts (`WriteConflict` / code 112) and retries Mongoose sessions up to 3 times with exponential backoff.
+   Implements a `runWithTransactionRetry` wrapper that catches transient write conflicts (`WriteConflict` / code 112) and retries Mongoose sessions up to 3 times with exponential backoff.
 
 3. **Chained-Timeout Spin Engine with Drift Correction:**
    Uses a recursive chained-timeout scheduler rather than fixed `setInterval` loops, calculating `delay = max(0, interval - elapsed)` per tick to prevent timer drift and tick overlap.
@@ -30,8 +30,8 @@ Production-grade real-time backend service for music draft room management, live
 4. **Boot Recovery (`recoverUnfinishedSpins`):**
    Automatically detects and resumes any unfinished spins (`WAITING` or `RUNNING`) upon server startup or container restart.
 
-5. **Security & SAIF Compliance:**
-   Hardened with `helmet` security headers, IP rate-limiting (`express-rate-limit`), input validation with Zod, and sanitized production error responses.
+5. **Security & Input Validation:**
+   Configured with `helmet` security headers, IP rate-limiting (`express-rate-limit`), input validation with Zod, and sanitized production error responses.
 
 6. **Automated Testing Suite:**
    100% automated test coverage using native `node:test` runner across 22 tests covering REST APIs, Socket.IO real-time presence, spin lifecycle, 7 core edge cases, and 1000-trial uniform selection randomness.
