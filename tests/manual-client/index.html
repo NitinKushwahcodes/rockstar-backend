@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Roxstar Realtime Test Harness</title>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <!-- Pinned to match server socket.io version (4.8.1) -->
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <style>
     body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
     .card { border: 1px solid #444; padding: 15px; margin-bottom: 15px; border-radius: 4px; background: #252526; }
@@ -21,7 +22,8 @@
   
   <div class="card">
     <h3>Connection Config</h3>
-    <label>Server Base URL: <input type="text" id="baseUrl" value="http://localhost:8080" style="width:250px"></label><br>
+    <!-- Uses 127.0.0.1 by default to prevent IPv6 loopback resolution delays on Windows -->
+    <label>Server Base URL: <input type="text" id="baseUrl" value="http://127.0.0.1:8080" style="width:250px"></label><br>
     <label>JWT Token: <input type="text" id="token" placeholder="Bearer JWT" style="width:400px"></label><br>
     <label>Room ID: <input type="text" id="roomId" placeholder="24-char ObjectId" style="width:300px"></label><br>
     <button id="btnConnect" onclick="connectSocket()">Connect Socket</button>

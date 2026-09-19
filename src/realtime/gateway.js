@@ -20,35 +20,54 @@ export function initSocketGateway(httpServer) {
     },
   });
 
-  // Handshake authentication and room membership verification
-  io.use(async (socket, next) => {
-    try {
-      const auth = socket.handshake.auth || {};
-      let token = auth.token;
-      const roomId = auth.roomId;
-
-      if (!token || !roomId) {
-        return next(new Error('Authentication token and roomId are required'));
+  // Handshake authentication and room membership verification with 5s timeout guard
+  io.use((socket, next) => {
+    let resolved = false;
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        logger.warn({ socketId: socket.id }, 'Socket handshake authentication timed out after 5s');
+        next(new Error('Authentication timed out'));
       }
+    }, 5000);
 
-      if (typeof token === 'string' && token.startsWith('Bearer ')) {
-        token = token.slice(7).trim();
+    const safeNext = (err) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timer);
+        next(err);
       }
+    };
 
-      const decoded = jwt.verify(token, env.JWT_SECRET);
-      const userId = decoded.sub;
+    (async () => {
+      try {
+        const auth = socket.handshake.auth || {};
+        let token = auth.token;
+        const roomId = auth.roomId;
 
-      const member = await RoomMember.findOne({ roomId, userId, status: 'ACTIVE' });
-      if (!member) {
-        return next(new Error('User is not an active member of the specified room'));
+        if (!token || !roomId) {
+          return safeNext(new Error('Authentication token and roomId are required'));
+        }
+
+        if (typeof token === 'string' && token.startsWith('Bearer ')) {
+          token = token.slice(7).trim();
+        }
+
+        const decoded = jwt.verify(token, env.JWT_SECRET);
+        const userId = decoded.sub;
+
+        const member = await RoomMember.findOne({ roomId, userId, status: 'ACTIVE' });
+        if (!member) {
+          return safeNext(new Error('User is not an active member of the specified room'));
+        }
+
+        socket.data = { userId, roomId };
+        safeNext();
+      } catch (err) {
+        logger.warn({ err: err.message }, 'Socket handshake authentication failed');
+        safeNext(new Error('Unauthorized socket connection: ' + err.message));
       }
-
-      socket.data = { userId, roomId };
-      next();
-    } catch (err) {
-      logger.warn({ err: err.message }, 'Socket handshake authentication failed');
-      next(new Error('Unauthorized socket connection: ' + err.message));
-    }
+    })();
   });
 
   io.on('connection', async (socket) => {

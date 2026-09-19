@@ -8,8 +8,8 @@ import routes from './routes.js';
 
 const app = express();
 
-app.use(helmet());
-app.use(cors());
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(apiRateLimiter);
 app.use(express.json());
 app.use(requestContext);
