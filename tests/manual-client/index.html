@@ -22,8 +22,8 @@
   
   <div class="card">
     <h3>Connection Config</h3>
-    <!-- Uses 127.0.0.1 by default to prevent IPv6 loopback resolution delays on Windows -->
-    <label>Server Base URL: <input type="text" id="baseUrl" value="http://127.0.0.1:8080" style="width:250px"></label><br>
+    <!-- Defaults dynamically to window.location.origin (e.g. http://localhost or public IP); local dev reference: http://127.0.0.1:8080 -->
+    <label>Server Base URL: <input type="text" id="baseUrl" value="" style="width:250px"></label><br>
     <label>JWT Token: <input type="text" id="token" placeholder="Bearer JWT" style="width:400px"></label><br>
     <label>Room ID: <input type="text" id="roomId" placeholder="24-char ObjectId" style="width:300px"></label><br>
     <button id="btnConnect" onclick="connectSocket()">Connect Socket</button>
@@ -52,6 +52,18 @@
 
   <script>
     let socket = null;
+
+    // Set default base URL dynamically to current window origin (or 127.0.0.1:8080 when opened as local file)
+    window.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('baseUrl');
+      if (input && !input.value) {
+        if (window.location.origin && window.location.origin !== 'null' && !window.location.href.startsWith('file:')) {
+          input.value = window.location.origin;
+        } else {
+          input.value = 'http://127.0.0.1:8080';
+        }
+      }
+    });
 
     function log(type, payload) {
       const logDiv = document.getElementById('log');
