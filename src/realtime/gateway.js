@@ -14,8 +14,9 @@ let io = null;
 export function initSocketGateway(httpServer) {
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: '*',
+      origin: (origin, callback) => callback(null, true),
       methods: ['GET', 'POST'],
+      credentials: true,
     },
   });
 
@@ -23,11 +24,15 @@ export function initSocketGateway(httpServer) {
   io.use(async (socket, next) => {
     try {
       const auth = socket.handshake.auth || {};
-      const token = auth.token;
+      let token = auth.token;
       const roomId = auth.roomId;
 
       if (!token || !roomId) {
         return next(new Error('Authentication token and roomId are required'));
+      }
+
+      if (typeof token === 'string' && token.startsWith('Bearer ')) {
+        token = token.slice(7).trim();
       }
 
       const decoded = jwt.verify(token, env.JWT_SECRET);
@@ -42,7 +47,7 @@ export function initSocketGateway(httpServer) {
       next();
     } catch (err) {
       logger.warn({ err: err.message }, 'Socket handshake authentication failed');
-      next(new Error('Unauthorized socket connection'));
+      next(new Error('Unauthorized socket connection: ' + err.message));
     }
   });
 

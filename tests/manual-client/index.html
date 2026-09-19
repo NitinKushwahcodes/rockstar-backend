@@ -62,14 +62,21 @@
     }
 
     function connectSocket() {
-      const baseUrl = document.getElementById('baseUrl').value;
-      const token = document.getElementById('token').value.trim();
+      const baseUrl = document.getElementById('baseUrl').value.trim();
+      let token = document.getElementById('token').value.trim();
       const roomId = document.getElementById('roomId').value.trim();
+
+      if (token.startsWith('Bearer ')) {
+        token = token.slice(7).trim();
+      }
 
       if (!token || !roomId) {
         alert('Please enter both JWT Token and Room ID');
         return;
       }
+
+      document.getElementById('status').innerText = 'Connecting...';
+      document.getElementById('status').style.color = '#e2c08d';
 
       socket = io(baseUrl, {
         auth: { token, roomId }
@@ -87,6 +94,8 @@
         log('CONNECT_ERROR', err.message);
         document.getElementById('status').innerText = 'Connect Error: ' + err.message;
         document.getElementById('status').style.color = '#f44';
+        document.getElementById('btnConnect').disabled = false;
+        document.getElementById('btnDisconnect').disabled = true;
       });
 
       socket.on('disconnect', (reason) => {
