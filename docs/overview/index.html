@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roxstar Backend Assessment — Project Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1c1d21;
+    --sub: #55575e;
+    --bg: #fbfaf7;
+    --card: #ffffff;
+    --line: #e6e3db;
+    --accent: #b5502c;
+    --accent-2: #2b5e4f;
+    --accent-3: #2b4a6f;
+    --tag-bg: #f2ede2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #ede9df;
+      --sub: #b9b6ac;
+      --bg: #17181b;
+      --card: #1f2023;
+      --line: #34363b;
+      --accent: #e08a63;
+      --accent-2: #6fc7ac;
+      --accent-3: #7fa8d9;
+      --tag-bg: #2a2b2f;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif; line-height: 1.65;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 56px 24px 100px; }
+  header.top {
+    border-bottom: 3px solid var(--ink); padding-bottom: 28px; margin-bottom: 40px;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 10px; font-weight: 500;
+  }
+  h1.title {
+    font-family: 'Fraunces', serif; font-size: 38px; font-weight: 600; margin: 0 0 12px;
+    line-height: 1.15;
+  }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px 10px; margin-top: 16px; }
+  .tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--tag-bg);
+    color: var(--sub); padding: 5px 11px; border-radius: 20px; border: 1px solid var(--line);
+  }
+  section { margin-bottom: 48px; }
+  .sec-num {
+    font-family: 'JetBrains Mono', monospace; color: var(--accent); font-size: 13px;
+    font-weight: 500; letter-spacing: 0.08em;
+  }
+  h2 {
+    font-family: 'Fraunces', serif; font-size: 25px; font-weight: 600; margin: 4px 0 18px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--line);
+  }
+  h3 {
+    font-family: 'Inter', sans-serif; font-size: 16.5px; font-weight: 700; margin: 22px 0 8px;
+    color: var(--accent-3);
+  }
+  p { color: var(--ink); font-size: 15.5px; }
+  .sub { color: var(--sub); }
+  .callout {
+    background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent);
+    border-radius: 6px; padding: 18px 20px; font-size: 14.5px; color: var(--sub); margin: 18px 0;
+  }
+  .callout b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+  @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px;
+  }
+  .card .k {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-2);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; display: block;
+  }
+  .card .v { font-size: 14.5px; color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  th { text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
+       text-transform: uppercase; letter-spacing: 0.05em; color: var(--sub);
+       border-bottom: 2px solid var(--ink); padding: 8px 10px 10px; }
+  td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  code {
+    font-family: 'JetBrains Mono', monospace; background: var(--tag-bg); padding: 2px 6px;
+    border-radius: 4px; font-size: 13px; color: var(--accent);
+  }
+  pre {
+    background: var(--ink); color: #e8e6df; border-radius: 8px; padding: 16px 18px;
+    overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 12.8px; line-height: 1.6;
+    margin: 14px 0;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 6px; font-size: 15px; }
+  .flow-step {
+    display: flex; gap: 14px; align-items: flex-start; padding: 12px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-num {
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: 20px; color: var(--accent);
+    min-width: 28px;
+  }
+  .badge-good { color: var(--accent-2); font-weight: 600; }
+  .badge-note { color: var(--accent); font-weight: 600; }
+  footer {
+    margin-top: 60px; padding-top: 22px; border-top: 1px solid var(--line);
+    font-size: 13px; color: var(--sub); text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">Roxstar Technical Assessment — Backend Track</div>
+    <h1 class="title">Voice Draft, Room &amp; Spin Wheel System</h1>
+    <p class="sub" style="font-size:16px; margin-top:6px;">A written project overview, prepared by Nitin Kushwah as a companion to the demo recording.</p>
+    <div class="meta-row">
+      <span class="tag">Node.js + Express</span>
+      <span class="tag">MongoDB Atlas</span>
+      <span class="tag">Socket.IO</span>
+      <span class="tag">Docker</span>
+      <span class="tag">AWS EC2</span>
+      <span class="tag">Nginx</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-num">01</div>
+    <h2>Introduction</h2>
+    <p>I'm Nitin Kushwah, a Data Science and AI student with a working background in the MERN stack, core data structures and algorithms, and computer science fundamentals — operating systems, databases, and networks. This assessment asked for a Node.js backend with real-time rooms and a spin-wheel game, and I focused entirely on that Backend track.</p>
+    <div class="callout">
+      <b>A quick honest note before you read further:</b> I was given roughly one day for this assessment. Within that day, I was also managing a cold with a sore throat, which is why I'm sending this written document alongside the video — in case the recording is affected, this covers the same ground in full detail. I also want to be upfront that I had not worked with Docker or AWS deployment before this project. I learned both specifically for this assessment — reading documentation and working through the setup as I built — rather than already knowing them coming in. I think that's worth saying plainly rather than presenting it as prior expertise.
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-num">02</div>
+    <h2>Understanding the Problem &amp; Choosing the Stack</h2>
+    <p>The assessment document covered three tracks in one PDF — Android/Audio, Backend, and DevOps — scored across six sections totalling 200 points. I read through the scoring table carefully first, since it changes what's worth prioritising. The Backend-relevant sections (Room &amp; Realtime, Spin Wheel Logic, Backend &amp; Database, Cloud/DevOps, Documentation) add up to 160 of the 200 points, and I chose to focus fully there rather than attempt the native Android/Oboe section, which is a separate skill set I didn't have time to build properly in one day.</p>
+    <h3>Stack decisions and why</h3>
+    <table>
+      <tr><th>Choice</th><th>Reasoning</th></tr>
+      <tr><td><b>Plain JavaScript</b>, not TypeScript</td><td>My strongest comfort is in MERN-style JavaScript. The assessment only asked for Node.js — nothing required TypeScript, so I used the stack I could reason about fastest and most correctly under time pressure.</td></tr>
+      <tr><td><b>MongoDB</b> over PostgreSQL</td><td>My existing project background is MERN, so MongoDB let me move faster. MongoDB Atlas runs as a replica set, which gives real multi-document transactions, and I used a partial unique index to get the same "only one active spin per room" guarantee a relational unique constraint would give — so I didn't lose correctness by choosing Mongo.</td></tr>
+      <tr><td><b>AWS EC2</b> over a serverless option</td><td>EC2 gives a fixed (Elastic) IP address. That let me restrict my MongoDB Atlas database to accept connections from exactly one IP, instead of opening it to the whole internet — which a dynamic-IP serverless platform would have forced me to do.</td></tr>
+      <tr><td><b>Docker + Nginx</b></td><td>Docker packages the app so it runs identically anywhere. Nginx sits in front as a reverse proxy, adding security headers and rate limiting, and routing traffic to the right place.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <div class="sec-num">03</div>
+    <h2>Architecture — How It Actually Works</h2>
+    <p>When a request reaches the server, it hits <b>Nginx first</b>. Nginx either serves the static test-client page directly, or forwards the request to the Node application running behind it. The Node app talks to <b>MongoDB Atlas</b>, hosted separately in the cloud.</p>
+
+    <h3>The full user journey</h3>
+    <div class="flow-step"><div class="flow-num">1</div><div><b>Create a user</b> — a display name is submitted, the server returns a signed JWT token. That token proves identity on every future request without hitting the database each time.</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div><b>Create or join a room</b> — creating a room makes you its owner and an active member in one atomic step. Joining is idempotent: joining twice doesn't create a duplicate membership.</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div><b>Connect over Socket.IO</b> — the client opens a persistent real-time connection, authenticated with the same JWT. It immediately receives a <code>room_state</code> snapshot.</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div><b>Draft sharing</b> — a draft's metadata can be shared into the room, broadcast live to everyone connected as <code>draft_shared</code>.</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div><b>Spin starts</b> — the room owner triggers it. The server snapshots exactly who is eligible at that instant, inside one atomic transaction, so a person joining at the same moment can't create a half-counted state.</div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div><b>Eliminations tick every 5 seconds</b> — one random participant is eliminated per tick, broadcast as <code>user_eliminated</code>, until exactly one remains and <code>winner_announced</code> fires.</div></div>
+
+    <h3>The single most important design decision</h3>
+    <p>The rule "only one spin can be active per room" is enforced <b>inside the database itself</b>, using a MongoDB partial unique index scoped to the WAITING and RUNNING statuses. This means even if two start-spin requests arrive in the same millisecond, MongoDB itself rejects the second one — the guarantee doesn't rely on application code getting a timing check exactly right.</p>
+    <pre><code>{ roomId: 1 }, { unique: true, partialFilterExpression: { status: { $in: ['WAITING','RUNNING'] } } }</code></pre>
+
+    <h3>The elimination timer</h3>
+    <p>Instead of a simple repeating timer, each elimination schedules the <i>next</i> one by reading a persisted timestamp from the database and calculating the exact remaining delay. This keeps the 5-second cadence accurate even if a database write happens to be briefly slow — a fixed interval timer would drift under that condition.</p>
+
+    <h3>Recovering from a crash</h3>
+    <p>If the server process restarts while a spin is running — a real crash, or a deliberate restart during deployment — it checks the database on boot for any spin left in a running state and resumes it automatically from the exact point it was interrupted, rather than leaving the room stuck.</p>
+  </section>
+
+  <section>
+    <div class="sec-num">04</div>
+    <h2>How This Was Tested</h2>
+    <p>The system is covered by 22 automated tests (unit and integration) that run against a real MongoDB test database — not mocks — including all seven edge cases specified in the assessment (duplicate spin starts, a player leaving mid-spin, reconnect recovery, owner disconnect, insufficient players, a real server restart mid-spin, and concurrent joins at the moment a spin starts).</p>
+    <p>It was also manually tested end-to-end using a small browser-based test client with three separate connected users, and verified live on the deployed AWS endpoint, not just locally.</p>
+
+    <h3>Testing it yourself</h3>
+    <p class="sub">There's no sign-up screen in the test client — it expects a token. Here's a copy-paste way to generate real users, a room, and try the live system directly:</p>
+    <pre><code>curl -X POST http://51.20.248.170/api/v1/users -H "Content-Type: application/json" -d '{"displayName":"Reviewer-A"}'
+curl -X POST http://51.20.248.170/api/v1/users -H "Content-Type: application/json" -d '{"displayName":"Reviewer-B"}'
+curl -X POST http://51.20.248.170/api/v1/users -H "Content-Type: application/json" -d '{"displayName":"Reviewer-C"}'
+
+# copy each "token" from the responses above, then:
+curl -X POST http://51.20.248.170/api/v1/rooms -H "Authorization: Bearer &lt;TOKEN_A&gt;" -H "Content-Type: application/json" -d '{"name":"Review Room"}'
+# copy the room "id" from the response, then join with B and C:
+curl -X POST http://51.20.248.170/api/v1/rooms/&lt;ROOM_ID&gt;/join -H "Authorization: Bearer &lt;TOKEN_B&gt;"
+curl -X POST http://51.20.248.170/api/v1/rooms/&lt;ROOM_ID&gt;/join -H "Authorization: Bearer &lt;TOKEN_C&gt;"</code></pre>
+    <p class="sub">Then open <code>http://51.20.248.170/ui/</code> in three browser tabs, paste in the matching token and room ID in each, connect, and start a spin as Reviewer-A to see the full live flow — including the 5-second elimination cadence.</p>
+  </section>
+
+  <section>
+    <div class="sec-num">05</div>
+    <h2>Self-Evaluation, Gaps &amp; What I'd Improve</h2>
+    <div class="grid">
+      <div class="card"><span class="k">Attempted</span><div class="v">Sections B, C, D, E, F</div></div>
+      <div class="card"><span class="k">Not attempted</span><div class="v">Section A — Android / Oboe audio</div></div>
+    </div>
+
+    <h3>Problems I ran into while building this</h3>
+    <ul>
+      <li>A socket connection issue that silently hung instead of failing — traced to a security-header configuration blocking local test requests, plus an authentication path that could hang if something went wrong mid-check. I added a timeout guard so this class of failure can never hang silently again.</li>
+      <li>Socket event names initially didn't match the assessment's exact required names — caught this on a careful second read of the spec and corrected every one.</li>
+      <li>Learning Docker and AWS EC2 deployment from scratch within the time available was the single biggest constraint — I got it working, but I'd want more time to harden the deployment further (see below).</li>
+    </ul>
+
+    <h3>What I would improve with more time</h3>
+    <ul>
+      <li>Move the in-memory spin timer to a Redis-backed scheduler, so the service could run as more than one instance without risking duplicate eliminations.</li>
+      <li>Add HTTPS via a proper domain and certificate, instead of a plain HTTP IP endpoint.</li>
+      <li>Build a small dedicated frontend for testing instead of the current bare-bones manual client.</li>
+      <li>Add more granular rate limiting per-user rather than per-IP only.</li>
+    </ul>
+
+    <div class="callout">
+      I'd rather state these gaps clearly than have them discovered during review. I'm confident I can walk through and defend every decision above in detail.
+    </div>
+  </section>
+
+  <footer>Nitin Kushwah — Roxstar Backend Assessment Submission</footer>
+</div>
+</body>
+</html>
